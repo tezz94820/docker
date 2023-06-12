@@ -1,0 +1,76 @@
+//IMAGE
+"docker build ." === build the docker image from dockerfile present in current dir therefore "."
+"docker build -t __image_name__ ." === build the image with a particular name
+"docker image ls" === list all the docker images
+"docker image rm __image_id__" === to remove the image. replace imageId to id of image we want to remove
+"docker run __image_name__" === to run the image by it's name
+
+//CONTAINER
+"docker run -d --name __container_name __image_name__" === to give name to container which is going to be build from that image.-d is to not to block the current cmd
+"docker run -p 3000:3000 -d --name __container_name __image_name__" === -p helps to set up the port left 3000 is the outaide world port, right 3000 is the docker conatiner port in which the node app is running. 
+"docker ps" === to get list of all docker containers
+"docker stop __container_name__" === to stop the container working status
+"docker rm node-app -f" === to remove the container from working status. -f is for force.
+"docker exec -it __container_name__ bash" == to go in the folder structure of he container.
+    "cat index.js" === to get the code in index.js
+    "exit" === to exit from the above gone file system.
+    "touch __file_name__" === to create a new file inside the container
+    "printenv" === to get all the environment variables used in the container
+
+//TO UPDATE CODE AUTMATICALLY
+//so every time we update the code in local system folder it does not update the code in docker image . 
+//to do it we add volume bind flag while building the container from the image.
+ "docker run -v ${pwd}:/app -p 3000:3000 -d --name node-app node-app-image" === binds the ${pwd} (i.e the current local folder path) to /app (path to conatiner folder)
+ But still we need to add nodemon to packages becasue even after changing the code we need to re reun the server to make the changes available to server or localhost.
+
+// TO DELETE NODE_MODULES FROM LOCAL FOLDER
+ //so after binding the local folder and container folder if we need to delete the nodemodules from the local folder and want to have no effect on conatiner folder
+ //that is we want to bind everything in 2 folders but not node_modules folder then we can use another volume
+"docker run -v ${pwd}:/app -v /app/node_modules -p 3000:3000 -d --name node-app node-app-image" 
+it says to bind evrything except node_modules .
+//now you can delete node_modules from local folder
+
+//TO MAKE DOCKER CONTAINER READ ONLY
+so we have bind our current folder with the container folder so if we make change in any one of them then the other changes significantly
+But we do not want to change our source code in local folder . we do not want the docker container to make any file changes and that to reflect it in local folder .
+//To stop doing it we add an extra ":ro" after "${pwd}:/app" bind . so it becomes 
+"docker run -v ${pwd}:/app:ro -v /app/node_modules -p 3000:3000 -d --name node-app node-app-image"
+Now docker container can not change the local folder.
+
+//ENVIRONMENT VARIABLES
+in docker file we added "ENV PORT 3000" . so we  created envirnment variable named PORT adn assiggned it default value 3000.
+we can change the value while run the conatiner by adding the flag --env PORT=4000. 
+"docker run -v ${pwd}:/app:ro -v /app/node_modules --env PORT=4000 -p 3000:4000 -d --name node-app node-app-image"
+Carefully look we wrote 3000:4000 in place of 3000:3000 . so here we are saying that local port should be 3000 and container port can be 3000.
+
+//PASS THE ENVIRONMENT VARIABLES FROM .ENV file
+create a .env file and assign PORT=4000
+and while building the container use command "--env-file ./.env"  === ./.env is the path to the .env file
+overall command becomes 
+"docker run -v ${pwd}:/app:ro -v /app/node_modules --env-file ./.env -p 3000:4000 -d --name node-app node-app-image"
+now no need to use individual --env for every environment variable.
+
+//TO REMOVE OR DELETE THE VOLUMES 
+"docker volume ls" === to get list of all volumes. 
+so we used 2 volumes here "-v" for binding and hiding node_modules but when we delete the containers the conatiner get deleted bu the volumesdo not get delete. 
+they grow one after the other and remember the information because we sometimes want not to forget the previous information if we are using sql databases.
+But if you want to remove it then use command
+"docker volume prune" === remove all the volumes 
+if you want to remove the voulume while deletetin the container use command 
+"docker rm node-app -fv" === to remove the conatiner along with it's volume
+
+
+
+        COMPOSE File
+
+we cannot write such a long commands like 
+docker run -v ${pwd}:/app:ro -v /app/node_modules --env-file ./.env -p 3000:4000 -d --name node-app node-app-image"
+so docker compose is a file to write this command in proper structured way.
+
+This file should be named as "docker-compose.yml" adn it is space sensitive.
+
+1. compose file run :- "docker-compose up -d"
+2. compose file stop with deleting containers and volumes :- "docker-compose down -v"
+3. Docker conpose is dumb if you change some of your code it is not so smart to build again. so you have to explicitely tell him to re build the image
+    "docker-compose up -d --build"
+4. 
