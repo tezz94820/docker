@@ -1,16 +1,23 @@
 version: "3"
-# services are the containers 
-services: 
+services:
   node-app:
-    build: .  
-    ports:
-      - "3000:3000"   # "-" is used to make a list 
-    volumes:
-      - ./:/app:ro
-      - /app/node_modules
+    build: .
+    ports: 
+      - "3000:3000"
     environment:
       - PORT=3000
-    # env_file:
-    #   - ./.env
-
+    depends_on:
+      - mongo
     
+  mongo:
+    image: mongo 
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=tejas
+      - MONGO_INITDB_ROOT_PASSWORD=pass123
+    volumes: 
+      - mongo-db:/data/db
+      #so this is a named container . left side is name of container . right side is the final directory of mongo image . it is taken from it's documentation.
+      
+#this is done to decalre all the named voulmes globaly . so that docker can refer it.
+volumes:
+  mongo-db:

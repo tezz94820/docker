@@ -1,0 +1,13 @@
+version: "3"
+services:
+  node-app:
+    build:
+    #actually context is the internal place where we specify the filepath
+      context: .
+    # in args we provide the value to variables which we created in dockerfile
+      args:
+        NODE_ENV: production
+    environment:
+      - NODE_ENV=production
+    command: node index.js
+    

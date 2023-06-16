@@ -16,6 +16,7 @@
     "exit" === to exit from the above gone file system.
     "touch __file_name__" === to create a new file inside the container
     "printenv" === to get all the environment variables used in the container
+"docker logs __container_name__" === to get the logs of a container use  
 
 //TO UPDATE CODE AUTMATICALLY
 //so every time we update the code in local system folder it does not update the code in docker image . 
@@ -55,7 +56,7 @@ now no need to use individual --env for every environment variable.
 so we used 2 volumes here "-v" for binding and hiding node_modules but when we delete the containers the conatiner get deleted bu the volumesdo not get delete. 
 they grow one after the other and remember the information because we sometimes want not to forget the previous information if we are using sql databases.
 But if you want to remove it then use command
-"docker volume prune" === remove all the volumes 
+"docker volume prune" === remove all the volumes of the contaioners which are not running.
 if you want to remove the voulume while deletetin the container use command 
 "docker rm node-app -fv" === to remove the conatiner along with it's volume
 
@@ -73,4 +74,120 @@ This file should be named as "docker-compose.yml" adn it is space sensitive.
 2. compose file stop with deleting containers and volumes :- "docker-compose down -v"
 3. Docker conpose is dumb if you change some of your code it is not so smart to build again. so you have to explicitely tell him to re build the image
     "docker-compose up -d --build"
-4. 
+
+
+//SEPARATING DEVELOPEMENT AND PRODUCTION ENVIRONMENT 
+we need to separate the developement and production environment because there are many things that are different in both. for example we need to write "npm run dev" 
+for developement and "node index.js" for production.
+another example is we need volumes like binding in developement but do not want it in production.
+
+we can separate the developement and production environment by creating separate docker and docker-compose files for both and referencing them at the time of build.
+in this project we are going to keep :-
+1. Dockerfile will be same for both developement and production. with changes in it
+2. There will be 3 docker-compose files :-
+    1. docker-compose.yml :- common for both developement and production . common code will be written here.
+    2. docker-compose.dev.yml :- compose for  developement . specific code for developement. it will override common file code.
+    3. docker-compose.prod.yml :- compose for production . it will also override common file code required for production.
+3. to run the developement environment  run command
+    "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+4. to run the production environment  run command
+    "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+5. To stop the conatiner use,
+    ""docker-compose -f docker-compose.yml -f docker-compose.prod.yml down -v"
+
+
+//ALL THE DEVELOPEMENT DEPENCIES EVEN GET INSTALL IN THE PRODUCTION ENVIRONMENT
+in this project "nodemon" which is a dev dependency gets installed in the production environment as well.
+for this we need to write the command "npm install --only=production" in place of "npm install".
+so in the Dockerfile we need to add an if statement stating it is a developement or production environment.
+"
+ARG NODE_ENV
+RUN if [ "$NODE_ENV" = "developement" ]; \
+        then npm install; \
+        else npm install --only=production; \
+        fi
+"
+
+and even set the value of NODE_ENV at docker-compose files of dev and prod to define the variable NODE_ENV as developement or produciton respectively.
+"
+build:
+    context: .
+    args:
+        NODE_ENV = "development"
+"
+
+
+
+###################################################################################################################################################################################################################################################################################################################################################
+
+MONGODB container
+
+1. we need not to pass here "build" and pass "image" because we do not want to build or change anything in the image. we just need to import it.
+    so image is only used. 
+2. To enter the bash terminal of mongo "docker exec -it _mongo_container_name bash"
+3. mongo bash commands :
+    1. ""mongosh -u "username" -p "password" "" :- for aujthentication.
+    2. "use __db_name__" :- to make a new database and it switches us to newly created database.
+    3. "show dbs" :- to get the list of all databases.
+        mongosh will not list the databases until we have a single entry in it.
+
+4. to directly enter the mongo authenticated from terminal use command 
+"docker exec -it _mongo_container_name mongosh -u "username" -p "password""
+
+5. so every time we are deleting the volumes. so that means we are getting rid of old information. But we do not want to get rid of data when we are using database. 
+    database information is important . so we need to make volumes and do not delete it at the time of deleting the container.
+    so finally we do not use "-v" flag while deleting the container .
+6. But if we do not delete the volumes there will be losss of space . because we still want to delete unnecessaary volumes and do not delete volume of database.
+    so we are going to make a named-volume which will help us to identify it and take a decision to not to delete it.
+    we can define the named voulme as:
+    "mongo-db:/data/db"
+    so this is a named container . left side is name of container . right side is the final directory of mongo image . it is taken from it's documentation.
+    But this is a problem that the name of the volume should be globally announced to make the docker aware. it is given in the docker-compose.yml file.
+    do "docker volume ls" to see the new named volume being created.
+6. Remember do not use "-v" flag now.
+7. to delete the volumes of all the unused conatiners . 
+    1.start the container and then do "docker volume prune" which will delete the volumes of all the  conatiners which are not running.
+
+
+
+
+### communicating the two containers (mongo and node containers)
+
+1. so we installed mongoose but after it we need to provide the url to mongoose to connect it to mongo server . or container.
+2. we need to write `mongoose.connect('mongodb://user:password@ip-address/test');` where we know the username 'tejas' and password 'pass123' . 
+    we can get the Ip address from command 
+    docker inspect __container_name 
+    final connectijng url becomes
+    URL :- 'mongodb://tejas:pass123@172.18.0.2:27017/?authSource=admin'
+3. to get the logs of a container use "docker logs __container_name__" 
+4. There is no guarenntee that docker will assign same IP address everytime to a specific container. so we need to do inspect every time ,get the ipaddress and fill it to connect mongodb server/container to node-app container.
+    so to solve this problem docker has inbuilt functionality for connection.
+
+// networks
+1. "docker network ls" === to get all the networks in docker. 
+    To get the list of containers and more information about a praticular network. use command
+    "docker network inspect __network_name__
+2. so to solve the problem of connection . there exists a DNS which works in the backgound always.
+3. so now you can call/get the IP-address of a service/container by it's service name.
+4. In this project there exists 2 services :- 1. node-app
+                                              2. mongo
+5. you can change the IP address now in mongoose to "mongo".
+    URL :- 'mongodb://tejas:pass123@mongo:27017/?authSource=admin'
+    this happened because our both the containers are on the same network . which helps the DNS to convert IP-address <-> domain_name
+
+
+//To start the mongo server first and then node server.
+1. We need to start mongo server first because we have written the ip address of mongo server in node conatiner's code.
+2. so node-app service depends on mongo service.
+3. so go into common compose file and under node-app service write
+    "
+    depends_on:
+        - mongo   
+    "
+so now "mongo" will start first and then "node-app" .
+
+
+//To start the service one by one
+1. if you want to start the service one by one ust define the service name after -d in compose up command line
+    "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d --no-deps node-app"
+    we passed there --no-deps because we have writte that node-app will depend on  mongo service. so to only start node-app service without any dependencies we use --no-deps.

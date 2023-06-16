@@ -1,0 +1,26 @@
+version: "3"
+services:
+  node-app:
+    build:
+    #actually context is the internal place where we specify the filepath
+      context: .
+    # in args we provide the value to variables which we created in dockerfile
+      args:
+        NODE_ENV: development
+    volumes:
+      - ./:/app:ro
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - MONGO_USER=tejas
+      - MONGO_PASSWORD=pass123
+      - MONGO_IP=mongo
+      - MONGO_PORT=27017
+    command: npm run dev
+
+
+  mongo:
+    image: mongo 
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=tejas
+      - MONGO_INITDB_ROOT_PASSWORD=pass123

@@ -1,0 +1,16 @@
+version: "3"
+# services are the containers 
+services: 
+  node-app:
+    build: .  
+    ports:
+      - "3000:3000"   # "-" is used to make a list 
+    volumes:
+      - ./:/app:ro
+      - /app/node_modules
+    environment:
+      - PORT=3000
+    # env_file:
+    #   - ./.env
+
+    
